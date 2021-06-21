@@ -85,10 +85,14 @@ def main():
     os.environ["CUDA_VISIBLE_DEVICES"]="0"
     model= AVENet(args) 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = model.cuda()
+    if torch.cuda.is_available():
+        model = model.cuda()
     
     # load pretrained models
-    checkpoint = torch.load(args.summaries)
+    checkpoint = torch.load(
+        args.summaries, 
+        map_location=(None if torch.cuda.is_available() else torch.device('cpu'))
+        )
     model.load_state_dict(checkpoint['model_state_dict'])
     model.to(device)
     print('load pretrained model.')
@@ -103,8 +107,11 @@ def main():
     model.eval()
     for step, (spec, audio, label, name) in enumerate(testdataloader):
         print('%d / %d' % (step,len(testdataloader) - 1))
-        spec = Variable(spec).cuda()
-        label = Variable(label).cuda()
+        spec = Variable(spec)
+        label = Variable(label)
+        if torch.cuda.is_available():
+            spec = spec.cuda()
+            label = label.cuda()
         aud_o = model(spec.unsqueeze(1).float())
 
         prediction = softmax(aud_o)
