@@ -28,12 +28,19 @@ class GetAudioVideoDataset(Dataset):
             for row in csv_reader:
                 classes.append(row[0])
 
-        with open(args.csv_path  + args.test) as f:
-            csv_reader = csv.reader(f)
-            for item in csv_reader:
-                if item[1] in classes and os.path.exists(args.data_path + item[0][:-3] + 'wav'):
-                    data.append(item[0])
-                    data2class[item[0]] = item[1]
+        # with open(args.csv_path  + args.test) as f:
+        #     csv_reader = csv.reader(f)
+        #     for item in csv_reader:
+        #         if item[1] in classes and os.path.exists(args.data_path + item[0][:-3] + 'wav'):
+        #             data.append(item[0])
+        #             data2class[item[0]] = item[1]    
+
+        for audio_file in sorted(os.listdir(args.data_path)):
+            [audio_id,ext] = os.path.splitext(audio_file)
+            if ext == '.wav':
+                data.append(audio_file)
+                data2class[audio_file] = "hail"
+
 
         self.audio_path = args.data_path 
         self.mode = mode

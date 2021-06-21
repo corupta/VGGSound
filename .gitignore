@@ -1,0 +1,7 @@
+__pycache__/
+
+screenlog.*
+
+#model file
+vggsound_avgpool.pth.tar
+

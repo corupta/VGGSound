@@ -1,4 +1,5 @@
 import os
+import pathlib
 import torch
 from torch.optim import *
 import torchvision
@@ -72,7 +73,21 @@ def get_arguments():
         help='Shortcut type of resnet (A | B)')
     return parser.parse_args() 
 
+def save_probs(f, v_id, probs):
+    curr_line = "{}".format(v_id)
+    for prob in probs:
+        curr_line += ",{:.5f}".format(prob)
+    curr_line += "\n"
+    f.write(curr_line)
 
+TOP_X = 6
+
+def save_prob_summary(classes, f, probs):
+    f.write("Top {} Audio Classes\n".format(TOP_X))
+    idx = np.argsort(probs)[::-1]
+    for i in range(TOP_X):
+        f.write("{:.4f} => {}\n".format(probs[idx[i]], classes[idx[i]]))
+    f.write("\n")
 
 def main():
     args = get_arguments()
@@ -99,29 +114,47 @@ def main():
 
     # create dataloader
     testdataset = GetAudioVideoDataset(args,  mode='test')
-    testdataloader = DataLoader(testdataset, batch_size=args.batch_size, shuffle=False,num_workers = 16)
+    testdataloader = DataLoader(testdataset, batch_size=args.batch_size, shuffle=False,num_workers = 4)
 
     softmax = nn.Softmax(dim=1)
     print("Loaded dataloader.")
+    classes = testdataset.classes
 
     model.eval()
-    for step, (spec, audio, label, name) in enumerate(testdataloader):
-        print('%d / %d' % (step,len(testdataloader) - 1))
-        spec = Variable(spec)
-        label = Variable(label)
-        if torch.cuda.is_available():
-            spec = spec.cuda()
-            label = label.cuda()
-        aud_o = model(spec.unsqueeze(1).float())
+    with open(os.path.join(args.result_path, "audio_classification_stats.csv"), "w") as f2:
+        heading_line = "video_id,{}\n".format(",".join(classes))
+        f2.write(heading_line)
+        for step, (spec, audio, label, name) in enumerate(testdataloader):
+            print('%d / %d' % (step,len(testdataloader) - 1))
+            spec = Variable(spec)
+            label = Variable(label)
+            if torch.cuda.is_available():
+                spec = spec.cuda()
+                label = label.cuda()
+            aud_o = model(spec.unsqueeze(1).float())
 
-        prediction = softmax(aud_o)
+            prediction = softmax(aud_o)
 
-        for i, item in enumerate(name):
-            np.save(args.result_path + '/%s.npy' % item,prediction[i].cpu().data.numpy())
+            for i, item in enumerate(name):
+                audio_id = name[i][:-4]
+                audio_dir = os.path.join(args.result_path, audio_id)
+                pathlib.Path(audio_dir).mkdir(parents=True, exist_ok=True)
 
-            # print example scores 
-            # print('%s, label : %s, prediction score : %.3f' % (
-            #     name[i][:-4], testdataset.classes[label[i]], prediction[i].cpu().data.numpy()[label[i]]))
+                probs = prediction[i].cpu().data.numpy()
+                v_id = audio_id
+                save_probs(f2, v_id, probs)
+                np.save(os.path.join(audio_dir, "data.npy"),prediction[i].cpu().data.numpy())
+                with open(os.path.join(audio_dir, "audio_classification_stats.csv"), 'w') as f:
+                    f.write(heading_line)
+                    save_probs(f, v_id, probs)
+
+                with open(os.path.join(audio_dir, "audio_classification_summary.txt"), 'w') as f:
+                    f.write("Scene Classification Summary for Video #{}\n\n".format(v_id))
+                    save_prob_summary(classes, f, probs)
+
+
+                # print example, scores
+                # print(name[i][:-4], label, prediction[i].cpu().data.numpy())
 
 
 
