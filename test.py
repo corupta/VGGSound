@@ -122,7 +122,7 @@ def main():
 
     model.eval()
     with open(os.path.join(args.result_path, "audio_classification_stats.csv"), "w") as f2:
-        heading_line = "video_id,{}\n".format(",".join(classes))
+        heading_line = "video_id,{}\n".format(",".join(["\"{}\"".format(cls) for cls in classes]))
         f2.write(heading_line)
         for step, (spec, audio, label, name) in enumerate(testdataloader):
             print('%d / %d' % (step,len(testdataloader) - 1))
