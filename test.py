@@ -120,41 +120,42 @@ def main():
     print("Loaded dataloader.")
     classes = testdataset.classes
 
-    model.eval()
-    with open(os.path.join(args.result_path, "audio_classification_stats.csv"), "w") as f2:
-        heading_line = "video_id,{}\n".format(",".join(["\"{}\"".format(cls) for cls in classes]))
-        f2.write(heading_line)
-        for step, (spec, audio, label, name) in enumerate(testdataloader):
-            print('%d / %d' % (step,len(testdataloader) - 1))
-            spec = Variable(spec)
-            label = Variable(label)
-            if torch.cuda.is_available():
-                spec = spec.cuda()
-                label = label.cuda()
-            aud_o = model(spec.unsqueeze(1).float())
+    with torch.no_grad():
+        model.eval()
+        with open(os.path.join(args.result_path, "audio_classification_stats.csv"), "w") as f2:
+            heading_line = "video_id,{}\n".format(",".join(["\"{}\"".format(cls) for cls in classes]))
+            f2.write(heading_line)
+            for step, (spec, audio, label, name) in enumerate(testdataloader):
+                print('%d / %d' % (step,len(testdataloader) - 1))
+                spec = Variable(spec)
+                label = Variable(label)
+                if torch.cuda.is_available():
+                    spec = spec.cuda()
+                    label = label.cuda()
+                aud_o = model(spec.unsqueeze(1).float())
 
-            prediction = softmax(aud_o)
+                prediction = softmax(aud_o)
 
-            for i, item in enumerate(name):
-                audio_id = name[i][:-4]
-                audio_dir = os.path.join(args.result_path, audio_id)
-                pathlib.Path(audio_dir).mkdir(parents=True, exist_ok=True)
+                for i, item in enumerate(name):
+                    audio_id = name[i][:-4]
+                    audio_dir = os.path.join(args.result_path, audio_id)
+                    pathlib.Path(audio_dir).mkdir(parents=True, exist_ok=True)
 
-                probs = prediction[i].cpu().data.numpy()
-                v_id = audio_id
-                save_probs(f2, v_id, probs)
-                np.save(os.path.join(audio_dir, "data.npy"),prediction[i].cpu().data.numpy())
-                with open(os.path.join(audio_dir, "audio_classification_stats.csv"), 'w') as f:
-                    f.write(heading_line)
-                    save_probs(f, v_id, probs)
+                    probs = prediction[i].cpu().data.numpy()
+                    v_id = audio_id
+                    save_probs(f2, v_id, probs)
+                    np.save(os.path.join(audio_dir, "data.npy"),prediction[i].cpu().data.numpy())
+                    with open(os.path.join(audio_dir, "audio_classification_stats.csv"), 'w') as f:
+                        f.write(heading_line)
+                        save_probs(f, v_id, probs)
 
-                with open(os.path.join(audio_dir, "audio_classification_summary.txt"), 'w') as f:
-                    f.write("Scene Classification Summary for Video #{}\n\n".format(v_id))
-                    save_prob_summary(classes, f, probs)
+                    with open(os.path.join(audio_dir, "audio_classification_summary.txt"), 'w') as f:
+                        f.write("Scene Classification Summary for Video #{}\n\n".format(v_id))
+                        save_prob_summary(classes, f, probs)
 
 
-                # print example, scores
-                # print(name[i][:-4], label, prediction[i].cpu().data.numpy())
+                    # print example, scores
+                    # print(name[i][:-4], label, prediction[i].cpu().data.numpy())
 
 
 
