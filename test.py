@@ -150,7 +150,7 @@ def main():
                         save_probs(f, v_id, probs)
 
                     with open(os.path.join(audio_dir, "audio_classification_summary.txt"), 'w') as f:
-                        f.write("Scene Classification Summary for Video #{}\n\n".format(v_id))
+                        f.write("Audio Classification Summary for Video #{}\n\n".format(v_id))
                         save_prob_summary(classes, f, probs)
 
 
